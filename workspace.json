@@ -1963,7 +1963,15 @@
             "outputPath": "dist/apps/cpa-nest",
             "main": "apps/cpa-nest/src/main.ts",
             "tsConfig": "apps/cpa-nest/tsconfig.app.json",
-            "assets": ["apps/cpa-nest/src/assets", "apps/cpa-nest/src/package.json"]
+            "assets": [
+              "apps/cpa-nest/src/assets",
+              "apps/cpa-nest/src/package.json",
+              {
+                "glob": "**/*",
+                "input": "./libs/assets/powershell",
+                "output": "./assets/powershell"
+              }
+            ]
           },
           "configurations": {
             "production": {
@@ -3328,7 +3336,8 @@
         "serve": {
           "builder": "@nrwl/node:execute",
           "options": {
-            "buildTarget": "oidc-provider-nest:build"
+            "buildTarget": "oidc-provider-nest:build",
+            "port": 7777
           },
           "configurations": {
             "production": {
@@ -5352,6 +5361,27 @@
     "cpa-sass": {
       "projectType": "library",
       "root": "libs/cpa/sass"
+    },
+    "ues-common-types": {
+      "root": "libs/ues/common/types",
+      "sourceRoot": "libs/ues/common/types/src",
+      "projectType": "library",
+      "architect": {
+        "lint": {
+          "builder": "@nrwl/linter:eslint",
+          "options": {
+            "lintFilePatterns": ["libs/ues/common/types/**/*.ts"]
+          }
+        },
+        "test": {
+          "builder": "@nrwl/jest:jest",
+          "outputs": ["coverage/libs/ues/common/types"],
+          "options": {
+            "jestConfig": "libs/ues/common/types/jest.config.js",
+            "passWithNoTests": true
+          }
+        }
+      }
     }
   },
   "cli": {

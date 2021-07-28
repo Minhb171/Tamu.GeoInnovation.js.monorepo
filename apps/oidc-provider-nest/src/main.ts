@@ -4,33 +4,120 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { Provider } from 'oidc-provider';
 import * as express from 'express';
 import * as rateLimit from 'express-rate-limit';
+import * as yargs from 'yargs';
 import { urlencoded, json } from 'body-parser';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { join } from 'path';
 
 import { OpenIdProvider } from '@tamu-gisc/oidc/provider-nestjs';
-import { ClientMetadataModule, ClientMetadataService } from '@tamu-gisc/oidc/common';
+import {
+  ClientMetadataModule,
+  ClientMetadataService,
+  RoleModule,
+  RoleService,
+  UserModule,
+  UserService,
+  TwoFactorAuthUtils,
+  Mailer
+} from '@tamu-gisc/oidc/common';
 
 import { AppModule } from './app/app.module';
 import { environment } from './environments/environment';
+import { mailerConfig } from './environments/mailerconfig';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: true
   });
 
-  const clientsService = app.select(ClientMetadataModule).get(ClientMetadataService, { strict: true });
+  // Sets up various parameters used during deployment
+  // When passing in multiple args in the monorepo you need to use this format:
+  // --args='-h=6','-w=9','-d=3'
+  const { argv } = yargs(process.argv.slice(2))
+    .scriptName('oidc-provider-nest')
+    .option('s', {
+      alias: 'setup',
+      description: 'Create default admin user and oidc-angular client metadata',
+      type: 'boolean',
+      implies: ['n', 't', 'r', 'e', 'p']
+    })
+    .option('x', {
+      alias: 'dropSchema',
+      description: "Sets the TypeORM 'dropSchema' value to true",
+      type: 'boolean'
+    })
+    .option('n', {
+      alias: 'clientName',
+      description: 'With -s, determines what to set the default client_name as',
+      type: 'string',
+      nargs: 1
+    })
+    .option('t', {
+      alias: 'clientSecret',
+      description: 'With -s, determines what to set the default client_secret as',
+      type: 'string',
+      nargs: 1
+    })
+    .option('r', {
+      alias: 'redirectUri',
+      description: 'With -s, determines what to set the default client redirect_uri as',
+      type: 'string',
+      nargs: 1
+    })
+    .option('e', {
+      alias: 'admin-email',
+      description: 'Email used for the admin account',
+      type: 'string',
+      nargs: 1
+    })
+    .option('p', {
+      alias: 'admin-password',
+      description: 'Password used for the admin account',
+      type: 'string',
+      nargs: 1
+    })
+    .option('m', {
+      alias: 'email-provider',
+      description: 'The email provider (ethereal / tamu / gmail)',
+      type: 'string',
+      demandOption: true,
+      choices: ['ethereal', 'tamu', 'google']
+    })
+    .help()
+    .alias('help', 'h');
 
-  const clients = await clientsService.loadClientMetadaForOidcSetup();
+  if (argv.x) {
+    console.warn('dropSchema set to true! Dropping all data in db');
+  }
+  if (argv.setup) {
+    console.log('Setup detected; creating defaults...');
+    OpenIdProvider.build();
+    console.warn("After setup, you will need to restart without '-s' so the oidc-admin client can be loaded");
+  } else {
+    console.log('Not creating defaults... Loading clients');
+    const service = app.select(ClientMetadataModule).get(ClientMetadataService, { strict: true });
 
-  OpenIdProvider.build(clients);
+    const clients = await service.loadClientMetadaForOidcSetup();
+    console.log('Clients:', clients);
+    OpenIdProvider.build(clients);
+  }
 
-  enableOIDCDebug(OpenIdProvider.provider);
+  // Only needed during development
+  if (!environment.production) {
+    enableOIDCDebug(OpenIdProvider.provider);
+  }
 
   OpenIdProvider.provider.proxy = true;
 
   const dir = join(__dirname, 'assets/views');
+
+  // This will setup the Mailer (gmail or ethereal)
+  // Mailer.build('gmail', mailerConfig);
+  Mailer.build('ethereal');
+
+  // This will set the default time step for otplib to 5 minutes
+  TwoFactorAuthUtils.build();
 
   app.use(helmet());
   app.setViewEngine('ejs');
@@ -52,6 +139,37 @@ async function bootstrap() {
 
   await app.listen(environment.port, () => {
     console.log('Listening at http://localhost:' + environment.port + '/' + environment.globalPrefix);
+
+    setTimeout(async () => {
+      if (argv.setup) {
+        const clientMetadataService = app.select(ClientMetadataModule).get(ClientMetadataService, { strict: true });
+        const roleService = app.select(RoleModule).get(RoleService, { strict: true });
+        const userService = app.select(UserModule).get(UserService, { strict: true });
+
+        try {
+          // Insert default Grant Types
+          await clientMetadataService.insertDefaultGrantTypes();
+          // Insert default Responses Types
+          await clientMetadataService.insertDefaultResponseTypes();
+          // Insert default Token Auth Methods
+          await clientMetadataService.insertDefaultTokenEndpointAuthMethods();
+          // Create ClientMetadata for oidc-idp-admin (angular site)
+          await clientMetadataService.insertClientMetadataForAdminSite(argv.n, argv.t, argv.r);
+          // Insert default Roles
+          await roleService.insertDefaultUserRoles();
+          // Create Admin user with known password
+          await userService.insertDefaultAdmin(argv.e, argv.p);
+          // Insert the secret questions for others to register
+          await userService.insertDefaultSecretQuestions();
+          // TODO: Add field to User that will prompt a user to change their password on next login
+
+          console.log('Defaults setup complete');
+        } catch (err) {
+          console.log(err);
+          throw new Error('Error setting up defaults.');
+        }
+      }
+    }, 3000);
   });
 }
 

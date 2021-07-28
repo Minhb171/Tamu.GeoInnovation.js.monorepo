@@ -71,16 +71,14 @@ export class WorkshopsService extends BaseService<Workshop> {
 
       await workshop.save();
 
-      const promised = body.snapshotGuids.map((guid) => {
-        return getRepository(WorkshopSnapshot)
-          .create({
-            workshop: workshop,
-            snapshot: snapshots.find((r) => r.guid === guid)
-          })
-          .save();
+      workshop.snapshots = body.snapshotGuids.map((guid) => {
+        return getRepository(WorkshopSnapshot).create({
+          workshop: workshop,
+          snapshot: snapshots.find((s) => s.guid === guid)
+        });
       });
 
-      await Promise.all(promised);
+      await workshop.save();
 
       try {
         return await this.getWorkshop(body.workshopGuid, true, false, false, false);
@@ -326,20 +324,10 @@ export class WorkshopsService extends BaseService<Workshop> {
       const workshop = await this.repo.findOne({
         where: {
           guid: params.guid
-        },
-        relations: ['scenarios', 'scenarios.scenario']
+        }
       });
 
       if (workshop) {
-        if (workshop.scenarios.length > 0) {
-          for (let sc of workshop.scenarios) {
-            if (sc.scenario) {
-              await sc.scenario.remove();
-            }
-
-            await sc.remove();
-          }
-        }
         return workshop.remove();
       } else {
         throw new HttpException('Internal Server Error', HttpStatus.UNPROCESSABLE_ENTITY);
