@@ -9,5 +9,10 @@ desktopSizes.forEach((size) => {
       cy.get('canvas').should('be.visible');
     });
     // Tests begin here
+    it(`Should Close Sidebar`, () => {
+      cy.get('[ng-reflect-title="Features"] > .esri-component > div > .material-icons').click();
+      cy.get('.tabs-content-container').should('not.be.visible');
+    });
+    // Tests end here
   });
 });
