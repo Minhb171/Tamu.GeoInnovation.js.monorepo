@@ -24,7 +24,13 @@ desktopSizes.forEach((size) => {
       cy.get('.ng-star-inserted > .esri-component > div > .material-icons').dblclick();
       cy.get('.tabs-content-container').should('not.be.visible');
     });
-
+    // test will pass once features tab click function is resolved (I'm assuming)
+    it(`Should Open Sidebar on Features Tab Double Click`, () => {
+      cy.get('[ng-reflect-title="Features"] > .esri-component > div > .material-icons').dblclick();
+      cy.get('tamu-gisc-sidebar.ng-tns-c76-0.ng-trigger-slide.right')
+        .should('have.attr', 'style')
+        .and('contain', 'translateX(0px)');
+    });
     // Tests end here *delete when submitting pull request*
   });
 });
