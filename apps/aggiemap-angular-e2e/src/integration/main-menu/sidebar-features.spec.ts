@@ -33,7 +33,22 @@ desktopSizes.forEach((size) => {
       cy.get('tamu-gisc-sidebar').should('have.attr', 'style').and('contain', 'translateX(0px)');
     });
 
-    it('Should Switch Between Sidebar Menus', () => {});
+    it('Should Switch Between Sidebar Menus', () => {
+      cy.get('[ng-reflect-title="Directions"]').click();
+      cy.url().should('include', '/trip');
+      cy.get('.travel-modes').should('be.visible');
+
+      cy.get('[ng-reflect-title="Bus Routes"]').click();
+      cy.url().should('include', '/bus');
+      cy.contains('AggieSpirit Bus Routes').should('be.visible');
+
+      cy.get('[ng-reflect-title="Directions"]').click();
+      cy.url().should('include', '/trip');
+      cy.get('.travel-modes').should('be.visible');
+
+      cy.get('[ng-reflect-title="Features"]').click();
+      cy.contains('Layers').should('be.visible');
+    });
     // Tests end here *delete when submitting pull request*
   });
 });
