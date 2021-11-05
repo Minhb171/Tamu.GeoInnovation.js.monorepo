@@ -11,23 +11,21 @@ desktopSizes.forEach((size) => {
       cy.get('[data-cy=tabs]').should('be.visible');
     });
 
-    // Tests begin here *delete when submitting pull request*
     it(`Should Close Sidebar on Features Tab Click`, () => {
-      cy.get('[ng-reflect-title="Features"]').click();
+      cy.get('[ng-reflect-title="Features"]').should('contain', 'menu').click();
       cy.get('[data-cy=sidebar-content-container]').should('not.be.visible');
     });
 
     it(`Should Close Sidebar on Directions Tab Double Click`, () => {
-      cy.get('[ng-reflect-title="Directions"]').dblclick();
+      cy.get('[ng-reflect-title="Directions"]').should('contain', 'directions').dblclick();
       cy.get('[data-cy=sidebar-content-container]').should('not.be.visible');
     });
 
     it(`Should Close Sidebar on Bus Routes Tab Double Click`, () => {
-      cy.get('[ng-reflect-title="Bus Routes"]').dblclick();
+      cy.get('[ng-reflect-title="Bus Routes"]').should('contain', 'directions_bus').dblclick();
       cy.get('[data-cy=sidebar-content-container]').should('not.be.visible');
     });
 
-    // test will pass once features tab click function is resolved (I'm assuming)
     it(`Should Open Sidebar on Features Tab Double Click`, () => {
       cy.get('[ng-reflect-title="Features"]').dblclick();
       cy.get('tamu-gisc-sidebar').should('have.attr', 'style').and('contain', 'translateX(0px)');
@@ -48,7 +46,7 @@ desktopSizes.forEach((size) => {
 
       cy.get('[ng-reflect-title="Features"]').click();
       cy.contains('Layers').should('be.visible');
+      cy.contains('Legend').should('be.visible');
     });
-    // Tests end here *delete when submitting pull request*
   });
 });
