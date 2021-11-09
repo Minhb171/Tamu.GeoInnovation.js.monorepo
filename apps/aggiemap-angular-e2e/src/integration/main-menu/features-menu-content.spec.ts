@@ -18,7 +18,7 @@ desktopSizes.forEach((size) => {
       cy.get('tamu-gisc-layer-list-item').should('be.visible');
     });
 
-    it.only('Should Display Legend List', () => {
+    it('Should Display Legend List', () => {
       cy.contains('Legend').should('be.visible');
       cy.get('tamu-gisc-legend').should('be.visible');
       cy.get('.legend-info').should('be.visible');
